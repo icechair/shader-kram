@@ -51,8 +51,8 @@ async function main() {
     return alert("coudnt get webgl context")
   }
   const [vs, fs] = await Promise.all([
-    getText("./shader.vert"),
-    getText("./shader.frag")
+    getText(window.location.href + "shader.vert"),
+    getText(window.location.href + "shader.frag")
   ])
   console.log(Object.getOwnPropertyNames(twgl))
 
