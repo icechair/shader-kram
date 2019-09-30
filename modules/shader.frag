@@ -1,6 +1,4 @@
-import {frag} from './lib/helper.js'
 
-export default frag`
 #ifdef GL_ES
 precision highp float;
 #endif
@@ -90,4 +88,3 @@ void main () {
     vec4 col = vec4(march, 1.0);
     gl_FragColor = col;
 }
-`
