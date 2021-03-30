@@ -1,75 +1,62 @@
-import "./twgl/4.x/twgl.js"
+///<reference path="./vendor/three/types/index.d.ts" />
+import * as THREE from "./vendor/three/three.module.min.js";
 
-/**
- *
- * @param {WebGL2RenderingContext} gl
- * @param {twgl.ProgramInfo} pInfo
- * @param {twgl.BufferInfo} bInfo
- * @param {{x:number,y:number}} mouse
- */
-function Render(gl, pInfo, bInfo, mouse) {
-  const fn = t => {
-    twgl.resizeCanvasToDisplaySize(gl.canvas)
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
-    gl.clearColor(0, 0, 0, 1)
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-    const uniforms = {
-      time: t * 0.001,
-      resolution: [gl.canvas.width, gl.canvas.height],
-      mouse: [mouse.x, mouse.y]
-    }
-    gl.useProgram(pInfo.program)
-    twgl.setBuffersAndAttributes(gl, pInfo, bInfo)
-    twgl.setUniforms(pInfo, uniforms)
-    twgl.drawBufferInfo(gl, bInfo)
-    requestAnimationFrame(fn)
+async function getShader(url) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    return "";
   }
-  return fn
+  return await response.text();
 }
 
-/**
- *
- * @param {string} url
- */
-async function getText(url) {
-  try {
-    const response = await fetch(url)
-    if (response.ok) {
-      return response.text()
-    }
-  } catch (e) {}
-  return ""
-}
+(async function () {
+  const container = window.document.querySelector("#container");
+  const startTime = Date.now();
 
-async function main() {
-  /**
-   * @type {HTMLCanvasElement}
-   */
-  const canvas = document.querySelector("#canvas")
-  const gl = canvas.getContext("webgl2")
-  if (!gl) {
-    return alert("coudnt get webgl context")
+  const camera = new THREE.Camera();
+  camera.position.z = 1;
+  const scene = new THREE.Scene();
+  const uniforms = {
+    time: { value: 1.0 },
+    resolution: { value: new THREE.Vector2() },
+  };
+
+  const vertexShader = await getShader("./shader.vert");
+  const fragmentShader = await getShader("./shader.frag");
+
+  const material = new THREE.ShaderMaterial({
+    uniforms,
+    vertexShader,
+    fragmentShader,
+  });
+
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
+
+  scene.add(mesh);
+
+  const renderer = new THREE.WebGLRenderer();
+  renderer.setPixelRatio(window.devicePixelRatio ? window.devicePixelRatio : 1);
+  container.appendChild(renderer.domElement);
+
+  uniforms.resolution.value.x = window.innerWidth;
+  uniforms.resolution.value.y = window.innerHeight;
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  function render(time) {
+    const elapsedMS = Date.now() - startTime;
+    const elapsedS = elapsedMS / 1000;
+
+    uniforms.time.value = elapsedS;
+    renderer.render(scene, camera);
   }
-  const [vs, fs] = await Promise.all([
-    getText(window.location.href + "shader.vert"),
-    getText(window.location.href + "shader.frag")
-  ])
-  console.log(Object.getOwnPropertyNames(twgl))
 
-  const pInfo = twgl.createProgramInfo(gl, [vs, fs])
-  const arrays = {
-    position: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0]
+  function animate(time) {
+    window.requestAnimationFrame(animate);
+    render(time);
   }
-  const bInfo = twgl.createBufferInfoFromArrays(gl, arrays)
+  animate();
 
-  const mouse = { x: 0, y: 0 }
-  canvas.addEventListener("mousemove", e => {
-    const rect = e.target.getBoundingClientRect()
-    mouse.x = e.clientX - rect.left
-    mouse.y = e.clientY - rect.top
-  })
-  const render = Render(gl, pInfo, bInfo, mouse)
-  requestAnimationFrame(render)
-}
-
-window.onload = main
+  window.onresize = () => {
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  };
+})();
